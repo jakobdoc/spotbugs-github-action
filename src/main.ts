@@ -23,7 +23,7 @@ async function run(): Promise<void> {
       core.info(
         `With the provided path, there will be ${searchResult.filesToUpload.length} results uploaded`
       )
-      core.debug(`Root artifact directory is ${searchResult.rootDirectory}`)
+      core.info(`Root artifact directory is ${searchResult.rootDirectory}`)
 
       const annotations: Annotation[] = chain(
         annotationsForPath,
