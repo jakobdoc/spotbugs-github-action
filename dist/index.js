@@ -7397,7 +7397,7 @@ function annotationsForPath(resultFile) {
         return asArray((_b = (_a = result === null || result === void 0 ? void 0 : result.BugCollection) === null || _a === void 0 ? void 0 : _a.Project) === null || _b === void 0 ? void 0 : _b.SrcDir).find(SrcDir => {
             const combinedPath = path.join(SrcDir, sourcePath);
             const fileExists = fs_1.default.existsSync(combinedPath);
-            core.debug(`${combinedPath} ${fileExists ? 'does' : 'does not'} exists`);
+            core.warning(`${combinedPath} ${fileExists ? 'does' : 'does not'} exists`);
             return fileExists;
         });
     });
@@ -7407,9 +7407,6 @@ function annotationsForPath(resultFile) {
         const primarySourceLine = (sourceLines.length > 1) ? sourceLines.find(sl => sl.primary) : sourceLines[0];
         const SrcDir = (primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath) &&
             getFilePath(primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath);
-        if (!SrcDir) {
-            core.warning(`Missing source ${primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath}`);
-        }
         if ((primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.start) && SrcDir) {
             const annotation = {
                 annotation_level: github_1.AnnotationLevel.warning,
