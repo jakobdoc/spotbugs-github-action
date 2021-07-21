@@ -7407,6 +7407,9 @@ function annotationsForPath(resultFile) {
         const primarySourceLine = (sourceLines.length > 1) ? sourceLines.find(sl => sl.primary) : sourceLines[0];
         const SrcDir = (primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath) &&
             getFilePath(primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath);
+        if (!SrcDir) {
+            core.warning(`Missing source ${primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath}`);
+        }
         if ((primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.start) && SrcDir) {
             const annotation = {
                 annotation_level: github_1.AnnotationLevel.warning,
@@ -7421,7 +7424,7 @@ function annotationsForPath(resultFile) {
             annotationsForBug.push(annotation);
         }
         else {
-            core.debug(`Skipping bug instance because source line start or source directory are missing`);
+            core.info(`Skipping bug instance because source line start or source directory are missing`);
         }
         return annotationsForBug;
     }, violations);
