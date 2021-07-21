@@ -45,7 +45,7 @@ export function annotationsForPath(resultFile: string): Annotation[] {
       asArray(result?.BugCollection?.Project?.SrcDir).find(SrcDir => {
         const combinedPath = path.join(SrcDir, sourcePath)
         const fileExists = fs.existsSync(combinedPath)
-        core.debug(`${combinedPath} ${fileExists ? 'does' : 'does not'} exists`)
+        core.warning(`${combinedPath} ${fileExists ? 'does' : 'does not'} exists`)
         return fileExists
       })
   )
@@ -57,10 +57,6 @@ export function annotationsForPath(resultFile: string): Annotation[] {
     const SrcDir: string | undefined =
       primarySourceLine?.sourcepath &&
       getFilePath(primarySourceLine?.sourcepath)
-
-    if (!SrcDir) {
-      core.warning(`Missing source ${primarySourceLine?.sourcepath}`)
-    }
 
     if (primarySourceLine?.start && SrcDir) {
       const annotation: Annotation = {
