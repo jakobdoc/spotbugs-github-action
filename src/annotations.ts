@@ -58,6 +58,10 @@ export function annotationsForPath(resultFile: string): Annotation[] {
       primarySourceLine?.sourcepath &&
       getFilePath(primarySourceLine?.sourcepath)
 
+    if (!SrcDir) {
+      core.warning(`Missing source ${primarySourceLine?.sourcepath}`)
+    }
+
     if (primarySourceLine?.start && SrcDir) {
       const annotation: Annotation = {
         annotation_level: AnnotationLevel.warning,
@@ -79,11 +83,10 @@ export function annotationsForPath(resultFile: string): Annotation[] {
       core.info(`Created annotation ${annotation.title} with message ${annotation.message}`)
       annotationsForBug.push(annotation)
     } else {
-      core.debug(
+      core.info(
         `Skipping bug instance because source line start or source directory are missing`
       )
     }
-
     return annotationsForBug
   }, violations)
 }
