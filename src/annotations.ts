@@ -76,6 +76,7 @@ export function annotationsForPath(resultFile: string): Annotation[] {
           HTML_TO_TEXT_OPTIONS
         )
       }
+      core.info(`Created annotation ${annotation.title} with message ${annotation.message}`)
       annotationsForBug.push(annotation)
     } else {
       core.debug(
