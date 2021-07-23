@@ -7362,11 +7362,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.annotationsForPath = exports.getAllFiles = void 0;
+exports.annotationsForPath = void 0;
 const core = __importStar(__webpack_require__(470));
 const fast_xml_parser_1 = __importDefault(__webpack_require__(989));
 const fs_1 = __importDefault(__webpack_require__(747));
-const path = __importStar(__webpack_require__(622));
 const github_1 = __webpack_require__(824);
 const html_to_text_1 = __webpack_require__(103);
 const unescape_1 = __importDefault(__webpack_require__(982));
@@ -7384,30 +7383,7 @@ const XML_PARSE_OPTIONS = {
 function asArray(arg) {
     return !arg ? [] : Array.isArray(arg) ? arg : [arg];
 }
-function getAllFiles(dir, extn, files, result, regex) {
-    const filesLocal = files || fs_1.default.readdirSync(dir);
-    let resultLocal = result || [];
-    const regexLocal = regex || new RegExp(`\\${extn}$`);
-    for (let i = 0; i < filesLocal.length; i++) {
-        let file = path.join(dir, filesLocal[i]);
-        if (fs_1.default.statSync(file).isDirectory()) {
-            try {
-                resultLocal = getAllFiles(file, extn, fs_1.default.readdirSync(file), resultLocal, regexLocal);
-            }
-            catch (error) {
-                continue;
-            }
-        }
-        else {
-            if (regexLocal.test(file)) {
-                resultLocal.push(file);
-            }
-        }
-    }
-    return resultLocal;
-}
-exports.getAllFiles = getAllFiles;
-function annotationsForPath(resultFile, skipSourceCheck = false) {
+function annotationsForPath(resultFile) {
     var _a, _b;
     core.info(`Creating annotations for ${resultFile}`);
     const root = process.env['GITHUB_WORKSPACE'] || '';
@@ -7416,23 +7392,13 @@ function annotationsForPath(resultFile, skipSourceCheck = false) {
     const bugPatterns = ramda_1.indexBy(a => a.type, asArray((_b = result === null || result === void 0 ? void 0 : result.BugCollection) === null || _b === void 0 ? void 0 : _b.BugPattern));
     core.info(`${resultFile} has ${violations.length} violations`);
     return ramda_1.chain(BugInstance => {
-        var _a, _b, _c;
         const annotationsForBug = [];
         const sourceLines = asArray(BugInstance.SourceLine);
         const primarySourceLine = (sourceLines.length > 1) ? sourceLines.find(sl => sl.primary) : sourceLines[0];
-        const sourceFileName = primarySourceLine ? (_c = (_b = (_a = primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath) === null || _a === void 0 ? void 0 : _a.split('\\')) === null || _b === void 0 ? void 0 : _b.pop()) === null || _c === void 0 ? void 0 : _c.split('/').pop() : 'null';
-        const resolvedSourceFiles = getAllFiles(root, sourceFileName || '');
-        const selectedSourceFile = resolvedSourceFiles.length > 0 ? resolvedSourceFiles[0] : '';
-        if (resolvedSourceFiles.length > 1) {
-            core.warning(`Resolved ${resolvedSourceFiles.length} source files for ${sourceFileName}, will use first one!`);
-        }
-        if (skipSourceCheck) {
-            core.warning(`Source file check is disabled, this should only be used for testing.`);
-        }
-        if ((primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.start) && (selectedSourceFile || skipSourceCheck)) {
+        if ((primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.start) && (primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath)) {
             const annotation = {
                 annotation_level: github_1.AnnotationLevel.warning,
-                path: path.relative(root, selectedSourceFile),
+                path: primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.sourcepath,
                 start_line: Number((primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.start) || 1),
                 end_line: Number((primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.end) || (primarySourceLine === null || primarySourceLine === void 0 ? void 0 : primarySourceLine.start) || 1),
                 title: BugInstance.type,
