@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {BugPattern, FindbugsResult, SourceLine} from './spotbugs'
 import parser from 'fast-xml-parser'
-import fs from 'fs'
+import fs, { PathLike } from 'fs'
 import * as path from 'path'
 import {Annotation, AnnotationLevel} from './github'
 import {fromString as htmlToText, HtmlToTextOptions} from 'html-to-text'
@@ -20,11 +20,33 @@ const XML_PARSE_OPTIONS = {
   attributeNamePrefix: ''
 }
 
-function asArray<T>(arg: T[] | T | undefined): T[] {
+function asArray<T>(arg: T[] | T | undefined | any[]): T[] {
   return !arg ? [] : Array.isArray(arg) ? arg : [arg]
 }
 
-export function annotationsForPath(resultFile: string): Annotation[] {
+export function getAllFiles(dir: string, extn: string, files?: string[], result?: any, regex?:any): string[] {
+  const filesLocal = files || fs.readdirSync(dir);
+  let resultLocal = result || [];
+  const regexLocal = regex || new RegExp(`\\${extn}$`)
+ 
+  for (let i = 0; i < filesLocal.length; i++) {
+      let file = path.join(dir, filesLocal[i]);
+      if (fs.statSync(file).isDirectory()) {
+          try {
+              resultLocal = getAllFiles(file, extn, fs.readdirSync(file), resultLocal, regexLocal);
+          } catch (error) {
+              continue;
+          }
+      } else {
+          if (regexLocal.test(file)) {
+              resultLocal.push(file);
+          }
+      }
+  }
+  return resultLocal;
+}
+
+export function annotationsForPath(resultFile: string, skipSourceCheck: boolean = false): Annotation[] {
   core.info(`Creating annotations for ${resultFile}`)
   const root: string = process.env['GITHUB_WORKSPACE'] || ''
 
@@ -32,6 +54,7 @@ export function annotationsForPath(resultFile: string): Annotation[] {
     fs.readFileSync(resultFile, <const>'UTF-8'),
     XML_PARSE_OPTIONS
   )
+
   const violations = asArray(result?.BugCollection?.BugInstance)
   const bugPatterns: {[type: string]: BugPattern} = indexBy(
     a => a.type,
@@ -39,31 +62,25 @@ export function annotationsForPath(resultFile: string): Annotation[] {
   )
   core.info(`${resultFile} has ${violations.length} violations`)
 
-  const getFilePath: (sourcePath: string) => string | undefined = memoizeWith(
-    identity,
-    (sourcePath: string) =>
-      asArray(result?.BugCollection?.Project?.SrcDir).find(SrcDir => {
-        const combinedPath = path.join(SrcDir, sourcePath)
-        const fileExists = fs.existsSync(combinedPath)
-        core.warning(`${combinedPath} ${fileExists ? 'does' : 'does not'} exists`)
-        return fileExists
-      })
-  )
-
   return chain(BugInstance => {
     const annotationsForBug: Annotation[] = []
     const sourceLines = asArray(BugInstance.SourceLine)
     const primarySourceLine: SourceLine | undefined = (sourceLines.length > 1) ? sourceLines.find(sl => sl.primary) : sourceLines[0]
-    const SrcDir: string | undefined =
-      primarySourceLine?.sourcepath &&
-      getFilePath(primarySourceLine?.sourcepath)
-
-    if (primarySourceLine?.start && SrcDir) {
+    const sourceFileName: string | undefined = primarySourceLine ? primarySourceLine?.sourcepath?.split('\\')?.pop()?.split('/').pop() : 'null';
+    const resolvedSourceFiles = getAllFiles(root, sourceFileName || '')
+    const selectedSourceFile: string = resolvedSourceFiles.length > 0 ? resolvedSourceFiles[0] : ''
+    if (resolvedSourceFiles.length > 1) {
+      core.warning(`Resolved ${resolvedSourceFiles.length} source files for ${sourceFileName}, will use first one!`)
+    }
+    if (skipSourceCheck) {
+      core.warning(`Source file check is disabled, this should only be used for testing.`)
+    }
+    if (primarySourceLine?.start && (selectedSourceFile || skipSourceCheck)) {
       const annotation: Annotation = {
         annotation_level: AnnotationLevel.warning,
         path: path.relative(
           root,
-          path.join(SrcDir, primarySourceLine?.sourcepath)
+          selectedSourceFile
         ),
         start_line: Number(primarySourceLine?.start || 1),
         end_line: Number(
