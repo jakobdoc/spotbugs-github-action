@@ -44,10 +44,10 @@ export function annotationsForPath(resultFile: string): Annotation[] {
     const sourceLines = asArray(BugInstance.SourceLine)
     const primarySourceLine: SourceLine | undefined = (sourceLines.length > 1) ? sourceLines.find(sl => sl.primary) : sourceLines[0]
   
-    if (primarySourceLine?.start && primarySourceLine.sourcepath) {
+    if (primarySourceLine?.start && primarySourceLine?.sourcepath) {
       const annotation: Annotation = {
         annotation_level: AnnotationLevel.warning,
-        path: primarySourceLine.sourcepath,
+        path: primarySourceLine?.sourcepath,
         start_line: Number(primarySourceLine?.start || 1),
         end_line: Number(
           primarySourceLine?.end || primarySourceLine?.start || 1
