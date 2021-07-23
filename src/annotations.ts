@@ -2,11 +2,10 @@ import * as core from '@actions/core'
 import {BugPattern, FindbugsResult, SourceLine} from './spotbugs'
 import parser from 'fast-xml-parser'
 import fs from 'fs'
-import * as path from 'path'
 import {Annotation, AnnotationLevel} from './github'
 import {fromString as htmlToText, HtmlToTextOptions} from 'html-to-text'
 import decode from 'unescape'
-import {memoizeWith, identity, indexBy, chain} from 'ramda'
+import {indexBy, chain} from 'ramda'
 
 const HTML_TO_TEXT_OPTIONS: HtmlToTextOptions = {
   wordwrap: false,
@@ -20,7 +19,7 @@ const XML_PARSE_OPTIONS = {
   attributeNamePrefix: ''
 }
 
-function asArray<T>(arg: T[] | T | undefined): T[] {
+function asArray<T>(arg: T[] | T | undefined | any[]): T[] {
   return !arg ? [] : Array.isArray(arg) ? arg : [arg]
 }
 
@@ -32,6 +31,7 @@ export function annotationsForPath(resultFile: string): Annotation[] {
     fs.readFileSync(resultFile, <const>'UTF-8'),
     XML_PARSE_OPTIONS
   )
+
   const violations = asArray(result?.BugCollection?.BugInstance)
   const bugPatterns: {[type: string]: BugPattern} = indexBy(
     a => a.type,
@@ -39,32 +39,15 @@ export function annotationsForPath(resultFile: string): Annotation[] {
   )
   core.info(`${resultFile} has ${violations.length} violations`)
 
-  const getFilePath: (sourcePath: string) => string | undefined = memoizeWith(
-    identity,
-    (sourcePath: string) =>
-      asArray(result?.BugCollection?.Project?.SrcDir).find(SrcDir => {
-        const combinedPath = path.join(SrcDir, sourcePath)
-        const fileExists = fs.existsSync(combinedPath)
-        core.debug(`${combinedPath} ${fileExists ? 'does' : 'does not'} exists`)
-        return fileExists
-      })
-  )
-
   return chain(BugInstance => {
     const annotationsForBug: Annotation[] = []
     const sourceLines = asArray(BugInstance.SourceLine)
     const primarySourceLine: SourceLine | undefined = (sourceLines.length > 1) ? sourceLines.find(sl => sl.primary) : sourceLines[0]
-    const SrcDir: string | undefined =
-      primarySourceLine?.sourcepath &&
-      getFilePath(primarySourceLine?.sourcepath)
-
-    if (primarySourceLine?.start && SrcDir) {
+  
+    if (primarySourceLine?.start && primarySourceLine?.sourcepath) {
       const annotation: Annotation = {
         annotation_level: AnnotationLevel.warning,
-        path: path.relative(
-          root,
-          path.join(SrcDir, primarySourceLine?.sourcepath)
-        ),
+        path: primarySourceLine?.sourcepath,
         start_line: Number(primarySourceLine?.start || 1),
         end_line: Number(
           primarySourceLine?.end || primarySourceLine?.start || 1
@@ -76,13 +59,13 @@ export function annotationsForPath(resultFile: string): Annotation[] {
           HTML_TO_TEXT_OPTIONS
         )
       }
+      core.info(`Created annotation ${annotation.title} with message ${annotation.message}`)
       annotationsForBug.push(annotation)
     } else {
-      core.debug(
+      core.info(
         `Skipping bug instance because source line start or source directory are missing`
       )
     }
-
     return annotationsForBug
   }, violations)
 }

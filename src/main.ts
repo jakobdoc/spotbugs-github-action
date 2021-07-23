@@ -23,13 +23,13 @@ async function run(): Promise<void> {
       core.info(
         `With the provided path, there will be ${searchResult.filesToUpload.length} results uploaded`
       )
-      core.debug(`Root artifact directory is ${searchResult.rootDirectory}`)
+      core.info(`Root artifact directory is ${searchResult.rootDirectory}`)
 
       const annotations: Annotation[] = chain(
         annotationsForPath,
         searchResult.filesToUpload
       )
-      core.debug(
+      core.info(
         `Grouping ${annotations.length} annotations into chunks of ${MAX_ANNOTATIONS_PER_REQUEST}`
       )
 
@@ -38,9 +38,10 @@ async function run(): Promise<void> {
           ? splitEvery(MAX_ANNOTATIONS_PER_REQUEST, annotations)
           : [annotations]
 
-      core.debug(`Created ${groupedAnnotations.length} buckets`)
+      core.info(`Created ${groupedAnnotations.length} buckets`)
 
       for (const annotationSet of groupedAnnotations) {
+        core.info(`Creating annotationSet ${name} with ${annotationSet.length} annotations`)
         await createCheck(name, title, annotationSet, annotations.length)
       }
     }
